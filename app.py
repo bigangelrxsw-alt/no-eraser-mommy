@@ -26,11 +26,14 @@ st.markdown(f"""
         color: {MOMMY_BROWN};
     }}
     
-    /* ✨ 全新防線：全面隱藏右上角的 Deploy 按鈕與工具列 */
+    /* ✨ 終極防線：全面隱藏右上角 Deploy、工具列，以及右下角 Manage app 按鈕 */
     .stAppToolbar, 
     [data-testid="stAppToolbar"], 
     [data-testid="stAppToolbarContainer"],
-    iframe ~ div [class*="stDeployButton"] {{
+    iframe ~ div [class*="stDeployButton"],
+    div[data-testid="stManageAppButton"],
+    footer,
+    #MainMenu {{
         display: none !important;
         opacity: 0 !important;
         visibility: hidden !important;
