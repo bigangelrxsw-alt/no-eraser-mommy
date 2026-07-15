@@ -5,7 +5,7 @@ import zipfile
 import os
 import time
 from pdf2image import convert_from_bytes
-import streamlit.components.v1 as components  # 用於安全載入廣告與驗證 JS 腳本
+import streamlit.components.v1 as components
 
 # ====================================================
 # ✨ 媽咪感 UI 設定：全域色調與風格
@@ -17,6 +17,11 @@ MOMMY_WHITE = "#FFFFFF"  # 乾淨的米白卡片背景
 
 # 改為 wide 佈局以提供完美的左右對比預覽
 st.set_page_config(page_title="唔使媽咪擦 NoEraserMommy - 家長專用", layout="wide")
+
+# 這裡為你植入了 Google AdSense 全站自動廣告與驗證代碼
+st.markdown("""
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074839973481448" crossorigin="anonymous"></script>
+""", unsafe_allow_html=True)
 
 st.markdown(f"""
     <style>
@@ -96,7 +101,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ====================================================
-# 📢 廣告與 Google AdSense 驗證代碼配置區
+# 📢 廣告驗證代碼配置區
 # ====================================================
 POPUP_AD_CODE = """
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074839973481448" crossorigin="anonymous"></script>
@@ -149,14 +154,12 @@ components.html(SIDEBAR_AD_CODE, height=320)
 # 🖼️ 核心影像處理功能 (免費 OpenCV 去陰影與斷線修復)
 # ====================================================
 def process_core_image(img, v_val):
-    # Step 1: 轉到 HSV 空間去除彩色筆跡 (紅筆、藍筆等)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     lower_black = np.array([0, 0, 0])
     upper_black = np.array([180, 80, v_val])
     black_mask = cv2.inRange(hsv, lower_black, upper_black)
     extracted = cv2.bitwise_not(black_mask)
     
-    # Step 2: 自適應二值化 (消除拍照不均勻陰影，使紙張背景全白)
     if len(extracted.shape) == 3:
         gray = cv2.cvtColor(extracted, cv2.COLOR_BGR2GRAY)
     else:
@@ -167,7 +170,6 @@ def process_core_image(img, v_val):
         cv2.THRESH_BINARY, 21, 10
     )
     
-    # Step 3: 輕微膨脹/腐蝕優化，修復因擦除導致字體斷線的問題
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
     final_img = cv2.erode(binary, kernel, iterations=1) 
     
