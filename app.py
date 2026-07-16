@@ -8,33 +8,47 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
-# 🔒 網頁來源限制（防盜連：精準 Host 與 Origin 判斷版）
+# 🔒 網頁來源限制（通用 iFrame + 瀏覽器端 JS 雙重檢查版）
 # ====================================================
-headers = {}
-try:
-    # 支援 Streamlit 1.30.0+ 官方推薦寫法
-    headers = st.context.headers
-except AttributeError:
-    try:
-        # 舊版 Streamlit 專用寫法
-        from streamlit.web.server.websocket_headers import _get_websocket_headers
-        headers = _get_websocket_headers() or {}
-    except Exception:
-        pass
 
-# 獲取主機名稱 (Host) 與 來源 (Referer)
-host = headers.get("Host", "") if headers else ""
-referer = headers.get("Referer", "") if headers else ""
+# 透過 JavaScript 在使用者的瀏覽器端直接檢查
+# 這能 100% 繞過伺服器端抓不到 Referer 的瀏覽器隱私限制
+guard_js = """
+<script>
+    function checkOrigin() {
+        try {
+            // 1. 嘗試獲取最外層網頁的網域名稱
+            var parentHost = window.parent.location.hostname;
+            var isAuthorized = parentHost.includes("nomummy.com") || 
+                               parentHost.includes("localhost") || 
+                               parentHost.includes("127.0.0.1");
+                               
+            if (!isAuthorized) {
+                // 如果最外層網域不對，直接把最外層網頁導向官網
+                window.parent.location.href = "https://nomummy.com";
+            }
+        } catch (e) {
+            // 2. 如果因為跨網域安全限制，瀏覽器不允許讀取 window.parent.location
+            // 代表這個 iframe 肯定被放在「非」streamlit.app 的其他第三方網域上
+            // 我們接著檢查 document.referrer (來源網域)
+            var ref = document.referrer;
+            if (ref && !ref.includes("nomummy.com") && !window.location.hostname.includes("localhost")) {
+                // 發現是不合法的第三方網站偷嵌入，直接清空畫面
+                document.body.innerHTML = '<div style="text-align:center; margin-top:100px; font-family:sans-serif;">' +
+                                          '<h2>⚠️ 存取被拒絕</h2>' +
+                                          '<p>此工具僅授權在 <a href="https://nomummy.com" target="_top">https://nomummy.com</a> 內使用。</p>' +
+                                          '</div>';
+                window.top.location.href = "https://nomummy.com";
+            }
+        }
+    }
+    // 立即執行檢查
+    checkOrigin();
+</script>
+"""
 
-# 判定是否在 Streamlit 雲端環境被直接開啟
-# 如果 Host 包含 streamlit.app，且 Referer 裡面沒有 nomummy.com，就直接阻斷
-is_direct_streamlit = "streamlit.app" in host and "nomummy.com" not in referer
-
-if is_direct_streamlit:
-    st.set_page_config(page_title="存取被拒絕", layout="centered")
-    st.error("⚠️ 存取被拒絕：此工具僅授權在 https://nomummy.com 內使用。")
-    st.info("請前往官方網站使用本工具：[https://nomummy.com](https://nomummy.com)")
-    st.stop()  # 強制停止執行後續的所有 Python 程式碼
+# 在網頁一開始就悄悄載入這段 JS 防護盾
+components.html(guard_js, height=0, width=0)
 
 # ====================================================
 # 🗂️ 處理 ads.txt 路由（讓 Google AdSense 能夠直接驗證）
