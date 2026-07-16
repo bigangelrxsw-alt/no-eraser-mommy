@@ -16,24 +16,29 @@ import streamlit.components.v1 as components
 guard_js = """
 <script>
     function checkOrigin() {
+        // 1. 檢查自己是不是被「直接打開」的 (如果是最頂層視窗，且不是 localhost，就直接導回官網)
+        if (window.self === window.top) {
+            var currentHost = window.location.hostname;
+            if (!currentHost.includes("localhost") && !currentHost.includes("127.0.0.1")) {
+                window.location.href = "https://nomummy.com";
+                return;
+            }
+        }
+
         try {
-            // 1. 嘗試獲取最外層網頁的網域名稱
+            // 2. 如果是被嵌入的，檢查外層網域
             var parentHost = window.parent.location.hostname;
             var isAuthorized = parentHost.includes("nomummy.com") || 
                                parentHost.includes("localhost") || 
                                parentHost.includes("127.0.0.1");
                                
             if (!isAuthorized) {
-                // 如果最外層網域不對，直接把最外層網頁導向官網
                 window.parent.location.href = "https://nomummy.com";
             }
         } catch (e) {
-            // 2. 如果因為跨網域安全限制，瀏覽器不允許讀取 window.parent.location
-            // 代表這個 iframe 肯定被放在「非」streamlit.app 的其他第三方網域上
-            // 我們接著檢查 document.referrer (來源網域)
+            // 3. 遇到跨網域限制 (被別人盜用嵌入)
             var ref = document.referrer;
             if (ref && !ref.includes("nomummy.com") && !window.location.hostname.includes("localhost")) {
-                // 發現是不合法的第三方網站偷嵌入，直接清空畫面
                 document.body.innerHTML = '<div style="text-align:center; margin-top:100px; font-family:sans-serif;">' +
                                           '<h2>⚠️ 存取被拒絕</h2>' +
                                           '<p>此工具僅授權在 <a href="https://nomummy.com" target="_top">https://nomummy.com</a> 內使用。</p>' +
@@ -42,7 +47,6 @@ guard_js = """
             }
         }
     }
-    // 立即執行檢查
     checkOrigin();
 </script>
 """
