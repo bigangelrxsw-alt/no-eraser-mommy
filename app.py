@@ -8,6 +8,15 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
+# 🗂️ 處理 ads.txt 路由（讓 Google AdSense 能夠直接驗證）
+# ====================================================
+import urllib.parse
+query_params = st.query_params
+if "page" in query_params and query_params["page"] == "ads.txt":
+    st.write("google.com, pub-6074839973481448, DIRECT, f08c47fec0942fa0")
+    st.stop()
+
+# ====================================================
 # ✨ 媽咪感 UI 設定：全域色調與風格
 # ====================================================
 MOMMY_PEACH = "#FFE6D9"  # 溫暖的柔和粉橘背景
