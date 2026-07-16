@@ -8,11 +8,9 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
-# 🔒 網頁來源限制（防盜連：相容性最高、最穩定的版本）
+# 🔒 網頁來源限制（防盜連：精準 Host 與 Origin 判斷版）
 # ====================================================
 headers = {}
-
-# 1. 安全地嘗試各種獲取 Headers 的方法
 try:
     # 支援 Streamlit 1.30.0+ 官方推薦寫法
     headers = st.context.headers
@@ -24,17 +22,15 @@ except AttributeError:
     except Exception:
         pass
 
-# 2. 獲取 Referer 欄位
+# 獲取主機名稱 (Host) 與 來源 (Referer)
+host = headers.get("Host", "") if headers else ""
 referer = headers.get("Referer", "") if headers else ""
 
-# 3. 判斷是否為本地開發環境 (Localhost)
-# 本機開發時 headers 可能是空的，因此如果 referer 是空的且在本地執行，我們預設放行
-is_localhost = not referer or "localhost" in referer or "127.0.0.1" in referer
+# 判定是否在 Streamlit 雲端環境被直接開啟
+# 如果 Host 包含 streamlit.app，且 Referer 裡面沒有 nomummy.com，就直接阻斷
+is_direct_streamlit = "streamlit.app" in host and "nomummy.com" not in referer
 
-# 4. 檢查來源是否合法
-is_valid_origin = "nomummy.com" in referer or is_localhost
-
-if not is_valid_origin:
+if is_direct_streamlit:
     st.set_page_config(page_title="存取被拒絕", layout="centered")
     st.error("⚠️ 存取被拒絕：此工具僅授權在 https://nomummy.com 內使用。")
     st.info("請前往官方網站使用本工具：[https://nomummy.com](https://nomummy.com)")
@@ -275,7 +271,7 @@ if uploaded_files:
             st.image(preview_clean, use_container_width=True)
             
         num_files = len(all_pages_list)
-        st.markdown(f"<div style='color:{MOMMY_ORANGE}; font-weight:bold; margin:15px 0;'>已成功載入共 {num_files} 頁待處理試卷！</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:{MOMMY_ORANGE}; font-weight:bold; margin15px 0;'>已成功載入共 {num_files} 頁待處理試卷！</div>", unsafe_allow_html=True)
 
         # 彈出廣告與批量處理視窗
         @st.dialog("🎁 廣告贊助商（廣告載入中...）", width="large")
