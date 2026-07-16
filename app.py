@@ -8,51 +8,29 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
-# 🔒 網頁來源限制（通用 iFrame + 瀏覽器端 JS 雙重檢查版）
+# 🔒 網頁來源限制（Python 後端金鑰驗證 - 徹底堵死白嫖漏洞）
 # ====================================================
+# 檢查網址參數中是否包含正確的授權金鑰
+query_params = st.query_params
+is_authorized = query_params.get("from") == "nomummy"
 
-# 透過 JavaScript 在使用者的瀏覽器端直接檢查
-# 這能 100% 繞過伺服器端抓不到 Referer 的瀏覽器隱私限制
-guard_js = """
-<script>
-    function checkOrigin() {
-        // 1. 檢查自己是不是被「直接打開」的 (如果是最頂層視窗，且不是 localhost，就直接導回官網)
-        if (window.self === window.top) {
-            var currentHost = window.location.hostname;
-            if (!currentHost.includes("localhost") && !currentHost.includes("127.0.0.1")) {
-                window.location.href = "https://nomummy.com";
-                return;
-            }
-        }
-
-        try {
-            // 2. 如果是被嵌入的，檢查外層網域
-            var parentHost = window.parent.location.hostname;
-            var isAuthorized = parentHost.includes("nomummy.com") || 
-                               parentHost.includes("localhost") || 
-                               parentHost.includes("127.0.0.1");
-                               
-            if (!isAuthorized) {
-                window.parent.location.href = "https://nomummy.com";
-            }
-        } catch (e) {
-            // 3. 遇到跨網域限制 (被別人盜用嵌入)
-            var ref = document.referrer;
-            if (ref && !ref.includes("nomummy.com") && !window.location.hostname.includes("localhost")) {
-                document.body.innerHTML = '<div style="text-align:center; margin-top:100px; font-family:sans-serif;">' +
-                                          '<h2>⚠️ 存取被拒絕</h2>' +
-                                          '<p>此工具僅授權在 <a href="https://nomummy.com" target="_top">https://nomummy.com</a> 內使用。</p>' +
-                                          '</div>';
-                window.top.location.href = "https://nomummy.com";
-            }
-        }
-    }
-    checkOrigin();
-</script>
-"""
-
-# 在網頁一開始就悄悄載入這段 JS 防護盾
-components.html(guard_js, height=0, width=0)
+# 如果不是從官方網站管道（未帶正確金鑰），且不是本地開發環境，直接硬性阻斷
+if not is_authorized:
+    # 允許本地開發測試
+    import urllib.parse
+    is_localhost = False
+    try:
+        # 額外檢查是否為本地執行
+        if "localhost" in st.context.headers.get("Host", "") or "127.0.0.1" in st.context.headers.get("Host", ""):
+            is_localhost = True
+    except:
+        pass
+        
+    if not is_localhost:
+        st.set_page_config(page_title="存取被拒絕", layout="centered")
+        st.error("⚠️ 存取被拒絕：此工具僅授權在 https://nomummy.com 內使用。")
+        st.info("請前往官方網站使用本工具：[https://nomummy.com](https://nomummy.com)")
+        st.stop()  # 🚫 徹底終止 Python 執行，不渲染任何工具 UI
 
 # ====================================================
 # 🗂️ 處理 ads.txt 路由（讓 Google AdSense 能夠直接驗證）
