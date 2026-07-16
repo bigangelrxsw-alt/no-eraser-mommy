@@ -8,6 +8,39 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
+# 🔒 網頁來源限制（防盜連：相容性最高、最穩定的版本）
+# ====================================================
+headers = {}
+
+# 1. 安全地嘗試各種獲取 Headers 的方法
+try:
+    # 支援 Streamlit 1.30.0+ 官方推薦寫法
+    headers = st.context.headers
+except AttributeError:
+    try:
+        # 舊版 Streamlit 專用寫法
+        from streamlit.web.server.websocket_headers import _get_websocket_headers
+        headers = _get_websocket_headers() or {}
+    except Exception:
+        pass
+
+# 2. 獲取 Referer 欄位
+referer = headers.get("Referer", "") if headers else ""
+
+# 3. 判斷是否為本地開發環境 (Localhost)
+# 本機開發時 headers 可能是空的，因此如果 referer 是空的且在本地執行，我們預設放行
+is_localhost = not referer or "localhost" in referer or "127.0.0.1" in referer
+
+# 4. 檢查來源是否合法
+is_valid_origin = "nomummy.com" in referer or is_localhost
+
+if not is_valid_origin:
+    st.set_page_config(page_title="存取被拒絕", layout="centered")
+    st.error("⚠️ 存取被拒絕：此工具僅授權在 https://nomummy.com 內使用。")
+    st.info("請前往官方網站使用本工具：[https://nomummy.com](https://nomummy.com)")
+    st.stop()  # 強制停止執行後續的所有 Python 程式碼
+
+# ====================================================
 # 🗂️ 處理 ads.txt 路由（讓 Google AdSense 能夠直接驗證）
 # ====================================================
 import urllib.parse
