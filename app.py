@@ -8,29 +8,32 @@ from pdf2image import convert_from_bytes
 import streamlit.components.v1 as components
 
 # ====================================================
-# 🔒 網頁來源限制（Python 後端金鑰驗證 - 徹底堵死白嫖漏洞）
+# 🔒 網頁來源限制（Python 後端密碼金鑰驗證 - 徹底堵死白嫖漏洞）
 # ====================================================
-# 檢查網址參數中是否包含正確的授權金鑰
+
+# 1. 取得網址列上的所有參數
 query_params = st.query_params
+
+# 2. 檢查參數中是否有正確的暗號 (?from=nomummy 或 &from=nomummy)
 is_authorized = query_params.get("from") == "nomummy"
 
-# 如果不是從官方網站管道（未帶正確金鑰），且不是本地開發環境，直接硬性阻斷
+# 3. 如果不是從授權管道進入（未帶暗號），且不是本地開發環境，直接在後端硬性阻斷
 if not is_authorized:
-    # 允許本地開發測試
-    import urllib.parse
+    # 判斷是否為本地測試環境 (localhost / 127.0.0.1)
     is_localhost = False
     try:
-        # 額外檢查是否為本地執行
-        if "localhost" in st.context.headers.get("Host", "") or "127.0.0.1" in st.context.headers.get("Host", ""):
+        host_header = st.context.headers.get("Host", "")
+        if "localhost" in host_header or "127.0.0.1" in host_header:
             is_localhost = True
     except:
         pass
-        
+
+    # 如果既不是本機測試，又沒有正確暗號，直接中斷程式，不渲染任何介面
     if not is_localhost:
         st.set_page_config(page_title="存取被拒絕", layout="centered")
         st.error("⚠️ 存取被拒絕：此工具僅授權在 https://nomummy.com 內使用。")
         st.info("請前往官方網站使用本工具：[https://nomummy.com](https://nomummy.com)")
-        st.stop()  # 🚫 徹底終止 Python 執行，不渲染任何工具 UI
+        st.stop()  # 🚫 徹底終止 Python 執行，保護原始碼與功能不被載入
 
 # ====================================================
 # 🗂️ 處理 ads.txt 路由（讓 Google AdSense 能夠直接驗證）
